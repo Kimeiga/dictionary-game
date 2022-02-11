@@ -11,6 +11,7 @@
 
 	let guesses = [];
 	const thesaurusKey = "process.env.THESAURUS_KEY";
+	const dictionaryKey = "process.env.DICTIONARY_KEY";
 	let guess;
 	const onKeyPress = (e) => {
 		if (e.charCode === 13) guessed();
@@ -21,7 +22,10 @@
 		console.log(wordList);
 		let randomWord = wordList[Math.floor(Math.random() * wordList.length)];
 		console.log(randomWord);
-		getSynonymForWord(randomWord);
+
+		getRhymeForWord(randomWord);
+
+		// getSynonymForWord(randomWord);
 		// getDefinitionForWordOld();
 	});
 
@@ -65,11 +69,34 @@
 				}
 			})
 			.catch((error) => {
-				console.log(error);
+				// console.log(error);
 				getSynonymForWord();
 			});
 	}
 
+	function getRhymeForWord(word) {
+		fetch(
+			`https://rhymebrain.com/talk?function=getRhymes&word=${word}&maxResults=50`
+		)
+			.then((response) => response.json())
+			.then((data) => {
+				console.log(data);
+			});
+	}
+	function getDefinitionForWord2(word) {
+		fetch(
+			`https://www.dictionaryapi.com/api/v3/references/collegiate/json/${word}?key=${dictionaryKey}`
+		)
+			.then((response) => response.json())
+			.then((data) => {
+				console.log(data);
+				definition = data[0].shortdef[0];
+				console.log(definition);
+			})
+			.catch((error) => {
+				console.log(error);
+			});
+	}
 	function getDefinitionForWord(word) {
 		fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`)
 			.then((response) => response.json())
@@ -120,12 +147,15 @@
 
 <main>
 	<h1>Synonym Game</h1>
-	<p>{synonym}, {synonym2}</p>
+	<p>{definition}</p>
+	<!-- <p>{synonym}, {synonym2}</p> -->
 	<br />
 	<!-- {thesaurusData} -->
 	<br />
 	<!-- {synonymsList} -->
 	<br />
+
+	<p>letter count: {word.length}</p>
 
 	<input
 		type="text"

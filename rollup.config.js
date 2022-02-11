@@ -49,6 +49,7 @@ export default {
 			preprocess: preprocess({
                 // 👇 Add this attribute
 				replace: [["process.env.THESAURUS_KEY", process.env.THESAURUS_KEY]],
+				replace: [["process.env.DICTIONARY_KEY", process.env.DICTIONARY_KEY]],
 			}),
 		}),
 		// we'll extract any component CSS out into
