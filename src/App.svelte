@@ -2,149 +2,210 @@
 	import { onMount } from "svelte";
 	import wordList from "./words";
 
-	let definition;
-	let thesaurusData;
-	let synonymsList;
-	let synonym;
-	let synonym2;
-	let partOfSpeech;
-
+	let word;
+	let rhymeHint;
 	let guesses = [];
-	const thesaurusKey = "process.env.THESAURUS_KEY";
 	let guess;
+	const maxGuesses = 6;
+	let won = false;
+	let lost = false;
+
+	let validationError = "";
+
 	const onKeyPress = (e) => {
 		if (e.charCode === 13) guessed();
 	};
 
 	onMount(async () => {
-		console.log("process.env.THESAURUS_KEY");
-		console.log(wordList);
-		let randomWord = wordList[Math.floor(Math.random() * wordList.length)];
-		console.log(randomWord);
-		getSynonymForWord(randomWord);
-		// getDefinitionForWordOld();
+		word = wordList[Math.floor(Math.random() * wordList.length)];
+		console.log(word);
+
+		getRhymeForWord(word);
 	});
 
-	function guessed() {
-		console.log(guess);
-
-		guesses = [...guesses, guess];
-		console.log(guesses);
+	function lose() {
+		lost = true;
 	}
 
-	function getSynonymForWord(word) {
-		fetch(
-			`https://www.dictionaryapi.com/api/v3/references/thesaurus/json/${word}?key=${thesaurusKey}`
-		)
+	function win() {
+		won = true;
+	}
+
+	async function guessed() {
+		let guessArray = [];
+
+		for (let letter of guess) {
+			guessArray.push({ letter, color: "black" });
+		}
+
+		let isWord = await checkIfGuessIsEnglish(guess);
+
+		if (!isWord) {
+			validationError = `${guess} is not a word`;
+			console.log(`${guess} is not a word`);
+			return;
+		}
+
+		// if (wordList.includes(guess)) {
+		// green letters
+		for (let i = 0; i < guess.length; i++) {
+			// check each guess letter against the corresponding word letter
+			if (i > word.length) {
+				break;
+			}
+			if (guess[i] == word[i]) {
+				guessArray[i].color = "green";
+			}
+		}
+
+		// yellow letters
+		for (let i = 0; i < guess.length; i++) {
+			// check each guess letter against each word letter
+			for (let j = 0; j < word.length; j++) {
+				if (guess[i] == word[j] && guessArray[i].color != "green") {
+					console.log(
+						"%c" + guess[i],
+						"background: #222; color: #ff0000"
+					);
+					guessArray[i].color = "orange";
+				}
+			}
+		}
+
+		guesses = [...guesses, guessArray];
+		// } else {
+		// 	console.error("not in word list");
+		// }
+
+		if (guess == word) {
+			// you win!
+			win();
+		}
+
+		if (guesses.length == maxGuesses) {
+			lose();
+		}
+	}
+
+	async function checkIfGuessIsEnglish(word) {
+		let isEnglish = true;
+		// check if the guess is an english word
+		// debugger;
+		// fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`)
+		await fetch(`https://api.datamuse.com/words?ml=${word}`)
 			.then((response) => response.json())
 			.then((data) => {
 				console.log(data);
-
 				if (data.title == "No Definitions Found") {
-					getSynonymForWord();
-				} else {
-					thesaurusData = data;
-					synonymsList = thesaurusData[0].meta.syns[0];
-
-					console.log(synonymsList);
-					let i1 = Math.floor(Math.random() * synonymsList.length);
-					synonym = synonymsList[i1];
-					let i2;
-
-					i2 = Math.floor(Math.random() * synonymsList.length);
-					while (i2 == i1) {
-						i2 = Math.floor(Math.random() * synonymsList.length);
-						if (i2 != i1) {
-							break;
-						}
-					}
-
-					synonym2 = synonymsList[i2];
-					console.log(synonym);
-					console.log(synonym2);
+					isEnglish = false;
+				}
+				if (data.length == 0) {
+					isEnglish = false;
 				}
 			})
-			.catch((error) => {
-				console.log(error);
-				getSynonymForWord();
+			.catch((e) => {
+				console.error(e);
+				isEnglish = false;
 			});
+
+		return isEnglish;
 	}
 
-	function getDefinitionForWord(word) {
-		fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`)
+	function getRhymeForWord(word) {
+		fetch(`https://api.datamuse.com/words?rel_rhy=${word}`)
 			.then((response) => response.json())
 			.then((data) => {
+				// TODO: if data array length is zero, find a different word
 				console.log(data);
-
-				if (data.title == "No Definitions Found") {
-					getDefinitionForWord();
-				} else {
-					definition = data;
-				}
+				// rhymeHint = data.reduce(function (prev, current) {
+				// 	return prev.score > current.score ? prev : current;
+				// }).word;
+				rhymeHint = data[0].word;
+				console.log(rhymeHint);
 			})
-			.catch((error) => {
-				console.log(error);
-				getDefinitionForWord();
-			});
-	}
-
-	function getDefinitionForWordOld() {
-		fetch("https://random-word-api.herokuapp.com/word")
-			.then((response) => response.json())
-			.then((data) => {
-				console.log(data);
-				word = data[0];
-
-				fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${word}`)
-					.then((response) => response.json())
-					.then((data) => {
-						console.log(data);
-
-						if (data.title == "No Definitions Found") {
-							getDefinitionForWordOld();
-						} else {
-							definition = data;
-						}
-					})
-					.catch((error) => {
-						console.log(error);
-						getDefinitionForWordOld();
-					});
-			})
-			.catch((error) => {
-				console.log(error);
-				return [];
-			});
+			.catch((e) => console.error(e));
 	}
 </script>
 
 <main>
-	<h1>Synonym Game</h1>
-	<p>{synonym}, {synonym2}</p>
-	<br />
-	<!-- {thesaurusData} -->
-	<br />
-	<!-- {synonymsList} -->
-	<br />
+	<h1>Rhymedime</h1>
 
-	<input
-		type="text"
-		name="Guess"
-		id="guess"
-		bind:value={guess}
-		on:keypress={onKeyPress}
-	/>
+	{#if word}
+		<!-- <p>word: {word}</p> -->
+		<p>letter count: {word.length}</p>
+	{/if}
+
+	{#if rhymeHint}<p>Rhymes with {rhymeHint}</p>{/if}
 
 	{#each guesses as guess}
-		<p>{guess}</p>
+		<!-- <p>{guess}</p>
+		{#each Array(guess.length) as _, g}
+		<span>{guess.charAt(g)}</span>
+		{/each} -->
+		<p>
+			{#each guess as g}
+				<span style="color: {g.color}">{g.letter}</span>
+			{/each}
+		</p>
 	{/each}
+
+	{#if word}
+		{#each Array(maxGuesses) as _, i}
+			<div class="row">
+				<!-- svelte-ignore empty-block -->
+				{#if i == guesses.length}
+					{#if !won}
+						<!-- svelte-ignore a11y-autofocus -->
+						<input
+							type="text"
+							name="Guess"
+							id="guess"
+							bind:value={guess}
+							on:keypress={onKeyPress}
+							autofocus
+						/>
+					{/if}
+				{:else if i < guesses.length}{:else}
+					{#if !won}
+						<input type="text" disabled />
+					{/if}
+				{/if}
+				<!-- {#each Array(word.length) as _, j}
+					<div class="letterBox">{i}/{j}</div>
+				{/each} -->
+			</div>
+		{/each}
+	{/if}
+
+	{#if won}
+		<p>You won in {guesses.length} tries!</p>
+	{/if}
+
+	{#if lost}
+		<p>Better luck next time! The word was {word}.</p>
+	{/if}
+
+	<br />
 </main>
 
 <style>
+	.row {
+		display: flex;
+		justify-content: center;
+	}
+
+	.letterBox {
+		height: 3rem;
+		width: 3rem;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		border: 1px black solid;
+	}
 	main {
 		text-align: center;
 		padding: 1em;
-		max-width: 240px;
+		/* max-width: 240px; */
 		margin: 0 auto;
 	}
 
@@ -155,9 +216,9 @@
 		font-weight: 100;
 	}
 
-	@media (min-width: 640px) {
+	/* @media (min-width: 640px) {
 		main {
 			max-width: none;
 		}
-	}
+	} */
 </style>
