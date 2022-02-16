@@ -177,7 +177,7 @@
 				if (guesses[i][j].color == "green") {
 					guessTextArray[i] += "🟩";
 				} else if (guesses[i][j].color == "orange") {
-					guessTextArray[i] += "🟨";
+					guessTextArray[i] += "🟧";
 				} else {
 					guessTextArray[i] += "⬛";
 				}
