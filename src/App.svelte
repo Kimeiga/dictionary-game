@@ -71,6 +71,16 @@
 	}
 
 	async function guessed() {
+		for (const prevGuess of guesses) {
+			console.log(prevGuess.map((g) => g.letter).join(""));
+			if (prevGuess.map((g) => g.letter).join("") == guess) {
+				validationError = `You've already guessed ${guess}!`;
+				return;
+			}
+		}
+
+		console.log(guesses);
+
 		let guessArray = [];
 
 		for (let letter of guess) {
