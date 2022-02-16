@@ -13,6 +13,12 @@
 	let validationError = "";
 
 	const onKeyPress = (e) => {
+		validationError = "";
+		if (!guess) return;
+		if (guess == rhymeHint) {
+			validationError = "You can't use the rhyme hint.";
+			return;
+		}
 		if (e.charCode === 13) guessed();
 	};
 
@@ -42,7 +48,6 @@
 
 		if (!isWord) {
 			validationError = `${guess} is not a word`;
-			console.log(`${guess} is not a word`);
 			return;
 		}
 
@@ -148,6 +153,10 @@
 			{/each}
 		</p>
 	{/each}
+
+	{#if validationError}
+		<p style="color: red;">{validationError}</p>
+	{/if}
 
 	{#if word}
 		{#each Array(maxGuesses) as _, i}
