@@ -13,14 +13,39 @@
 	let validationError = "";
 
 	const onKeyPress = (e) => {
+		validationError = "";
+		if (!guess) return;
+		if (guess == rhymeHint) {
+			validationError = "You can't use the rhyme hint.";
+			return;
+		}
 		if (e.charCode === 13) guessed();
 	};
 
 	onMount(async () => {
-		word = wordList[Math.floor(Math.random() * wordList.length)];
-		console.log(word);
+		let goodWord = false;
+		while (!goodWord) {
+			word = wordList[Math.floor(Math.random() * wordList.length)];
+			console.log(word);
 
-		getRhymeForWord(word);
+			getRhymeForWord(word);
+
+			let wordLower = word.toLowerCase();
+			let guessLower = guess.toLowerCase();
+
+			// make sure its a good word
+			//
+			if (
+				!guessLower.includes(wordLower) &&
+				!wordLower.includes(guessLower)
+			) {
+				goodWord = true;
+			}
+
+			if (goodWord) {
+				return;
+			}
+		}
 	});
 
 	function lose() {
@@ -40,33 +65,34 @@
 
 		let isWord = await checkIfGuessIsEnglish(guess);
 
+		let wordLower = word.toLowerCase();
+		let guessLower = guess.toLowerCase();
+
 		if (!isWord) {
 			validationError = `${guess} is not a word`;
-			console.log(`${guess} is not a word`);
 			return;
 		}
 
 		// if (wordList.includes(guess)) {
 		// green letters
-		for (let i = 0; i < guess.length; i++) {
+		for (let i = 0; i < guessLower.length; i++) {
 			// check each guess letter against the corresponding word letter
-			if (i > word.length) {
+			if (i > wordLower.length) {
 				break;
 			}
-			if (guess[i] == word[i]) {
+			if (guessLower[i] == wordLower[i]) {
 				guessArray[i].color = "green";
 			}
 		}
 
 		// yellow letters
-		for (let i = 0; i < guess.length; i++) {
+		for (let i = 0; i < guessLower.length; i++) {
 			// check each guess letter against each word letter
-			for (let j = 0; j < word.length; j++) {
-				if (guess[i] == word[j] && guessArray[i].color != "green") {
-					console.log(
-						"%c" + guess[i],
-						"background: #222; color: #ff0000"
-					);
+			for (let j = 0; j < wordLower.length; j++) {
+				if (
+					guessLower[i] == wordLower[j] &&
+					guessArray[i].color != "green"
+				) {
 					guessArray[i].color = "orange";
 				}
 			}
@@ -77,7 +103,7 @@
 		// 	console.error("not in word list");
 		// }
 
-		if (guess == word) {
+		if (guessLower == wordLower) {
 			// you win!
 			win();
 		}
@@ -148,6 +174,10 @@
 			{/each}
 		</p>
 	{/each}
+
+	{#if validationError}
+		<p style="color: red;">{validationError}</p>
+	{/if}
 
 	{#if word}
 		{#each Array(maxGuesses) as _, i}
