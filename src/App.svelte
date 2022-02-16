@@ -12,6 +12,13 @@
 
 	let validationError = "";
 
+	let time = new Date();
+	$: hours = 23 - time.getHours();
+	$: minutes = 59 - time.getMinutes();
+	$: seconds = 59 - time.getSeconds();
+
+	let isCopied = false;
+
 	const onKeyPress = (e) => {
 		validationError = "";
 		if (!guess) return;
@@ -23,29 +30,36 @@
 	};
 
 	onMount(async () => {
-		let goodWord = false;
-		while (!goodWord) {
+		let goodWord = true;
+		do {
 			word = wordList[Math.floor(Math.random() * wordList.length)];
 			console.log(word);
 
-			getRhymeForWord(word);
+			await getRhymeForWord(word);
 
 			let wordLower = word.toLowerCase();
-			let guessLower = guess.toLowerCase();
+			let hintLower = rhymeHint.toLowerCase();
 
 			// make sure its a good word
-			//
 			if (
-				!guessLower.includes(wordLower) &&
-				!wordLower.includes(guessLower)
+				hintLower.includes(wordLower) ||
+				wordLower.includes(hintLower)
 			) {
+				goodWord = false;
+			} else if (wordLower.length < 5) {
+				goodWord = false;
+			} else {
 				goodWord = true;
 			}
+		} while (!goodWord);
 
-			if (goodWord) {
-				return;
-			}
-		}
+		const interval = setInterval(() => {
+			time = new Date();
+		}, 1000);
+
+		return () => {
+			clearInterval(interval);
+		};
 	});
 
 	function lose() {
@@ -137,8 +151,8 @@
 		return isEnglish;
 	}
 
-	function getRhymeForWord(word) {
-		fetch(`https://api.datamuse.com/words?rel_rhy=${word}`)
+	async function getRhymeForWord(word) {
+		await fetch(`https://api.datamuse.com/words?rel_rhy=${word}`)
 			.then((response) => response.json())
 			.then((data) => {
 				// TODO: if data array length is zero, find a different word
@@ -150,6 +164,45 @@
 				console.log(rhymeHint);
 			})
 			.catch((e) => console.error(e));
+	}
+
+	function generateSharableText() {
+		if (guesses.length == 0) {
+			return;
+		}
+		let guessTextArray = [];
+		for (let i = 0; i < guesses.length; i++) {
+			guessTextArray[i] = "";
+			for (let j = 0; j < guesses[i].length; j++) {
+				if (guesses[i][j].color == "green") {
+					guessTextArray[i] += "🟩";
+				} else if (guesses[i][j].color == "orange") {
+					guessTextArray[i] += "🟨";
+				} else {
+					guessTextArray[i] += "⬛";
+				}
+			}
+		}
+		console.log(guessTextArray);
+
+		let guessesText = guessTextArray.join("\n");
+
+		let text =
+			`Rhymedime 0 ${guesses.length}/6
+	
+` + guessesText;
+		console.log(text);
+
+		navigator.clipboard.writeText(text).then(
+			function () {
+				console.log("Async: Copying to clipboard was successful!");
+			},
+			function (err) {
+				console.error("Async: Could not copy text: ", err);
+			}
+		);
+
+		isCopied = true;
 	}
 </script>
 
@@ -213,6 +266,36 @@
 
 	{#if lost}
 		<p>Better luck next time! The word was {word}.</p>
+	{/if}
+
+	{#if won || lost}
+		<div class="container">
+			<div class="footer">
+				<div class="countdown">
+					<p class="timer">
+						Next word in {hours}:{minutes}:{seconds}
+					</p>
+				</div>
+				<div class="share">
+					<button id="share-button" on:click={generateSharableText}>
+						Share <svg
+							xmlns="http://www.w3.org/2000/svg"
+							height="12"
+							viewBox="0 0 24 24"
+							width="12"
+						>
+							<path
+								fill="var(--white)"
+								d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.54.5 1.25.81 2.04.81 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .24.04.47.09.7L8.04 9.81C7.5 9.31 6.79 9 6 9c-1.66 0-3 1.34-3 3s1.34 3 3 3c.79 0 1.5-.31 2.04-.81l7.12 4.16c-.05.21-.08.43-.08.65 0 1.61 1.31 2.92 2.92 2.92s2.92-1.31 2.92-2.92c0-1.61-1.31-2.92-2.92-2.92zM18 4c.55 0 1 .45 1 1s-.45 1-1 1-1-.45-1-1 .45-1 1-1zM6 13c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm12 7.02c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1z"
+							/>
+						</svg>
+						{#if isCopied}
+							<p>Copied performance to clipboard!</p>
+						{/if}
+					</button>
+				</div>
+			</div>
+		</div>
 	{/if}
 
 	<br />
